@@ -8,7 +8,29 @@ const modules = [
 ];
 let current=0; const nav=document.querySelector('#module-nav'), ideas=document.querySelector('#ideas'),terms=document.querySelector('#terms'),search=document.querySelector('#search');
 function el(tag, cls, text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e}
-function audioButton(text){const b=el('button','audio-button','🔊');b.type='button';b.setAttribute('aria-label','播放英文：'+text);b.title='播放英文读音';if(!('speechSynthesis' in window)||!('SpeechSynthesisUtterance' in window)){b.disabled=true;b.title='当前浏览器不支持语音朗读';return b}b.addEventListener('click',()=>{window.speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(text);utterance.lang='en-US';utterance.rate=0.88;const voices=window.speechSynthesis.getVoices();utterance.voice=voices.find(v=>v.lang.toLowerCase()==='en-us')||voices.find(v=>v.lang.toLowerCase().startsWith('en'))||null;window.speechSynthesis.speak(utterance)});return b}
+let activeSpeech = null;
+let activeAudioButton = null;
+const speechStatus = document.querySelector('#speech-status');
+function setSpeechStatus(message){speechStatus.textContent=message}
+function audioButton(text){
+ const b=el('button','audio-button','🔊');b.type='button';b.setAttribute('aria-label','播放英文：'+text);b.title='播放英文读音';
+ b.addEventListener('click',()=>{
+  if(!('speechSynthesis' in window)||!('SpeechSynthesisUtterance' in window)){setSpeechStatus('当前浏览器不支持语音朗读。请尝试在 Safari、Chrome 或 Edge 中打开。');return}
+  const synth=window.speechSynthesis;
+  try{
+   if(activeAudioButton)activeAudioButton.classList.remove('is-speaking');
+   if(synth.speaking||synth.pending)synth.cancel();
+   synth.resume();
+   const utterance=new SpeechSynthesisUtterance(text);activeSpeech=utterance;activeAudioButton=b;
+   utterance.lang='en-US';utterance.rate=0.88;
+   const voices=synth.getVoices();const voice=voices.find(v=>v.lang.toLowerCase()==='en-us')||voices.find(v=>v.lang.toLowerCase().startsWith('en'));if(voice)utterance.voice=voice;
+   utterance.onstart=()=>{b.classList.add('is-speaking');setSpeechStatus('正在播放英文读音…')};
+   utterance.onend=()=>{b.classList.remove('is-speaking');if(activeSpeech===utterance){activeSpeech=null;activeAudioButton=null;setSpeechStatus('播放完成。')}};
+   utterance.onerror=e=>{b.classList.remove('is-speaking');if(activeSpeech!==utterance)return;activeSpeech=null;activeAudioButton=null;if(e.error!=='interrupted'&&e.error!=='canceled')setSpeechStatus('语音播放失败。请检查设备音量和静音设置，或尝试在 Safari、Chrome、Edge 中打开。')};
+   setSpeechStatus('正在准备英文读音…');synth.speak(utterance);
+  }catch(e){setSpeechStatus('语音播放失败。请检查设备音量和静音设置，或尝试在 Safari、Chrome、Edge 中打开。')}
+ });return b
+}
 function render(){const q=search.value.trim().toLowerCase();nav.replaceChildren();modules.forEach((m,i)=>{const b=el('button','module-button'+(i===current?' active':''));b.type='button';b.setAttribute('aria-pressed',String(i===current));b.append(el('span','',String(i+1).padStart(2,'0')),document.createTextNode(m.title));b.onclick=()=>{current=i;search.value='';render()};nav.append(b)});const m=modules[current];document.querySelector('#module-kicker').textContent='MODULE '+String(current+1).padStart(2,'0')+' / '+m.en.toUpperCase();document.querySelector('#module-title').textContent=m.title;document.querySelector('#module-description').textContent=m.desc;document.querySelector('#module-number').textContent=String(current+1).padStart(2,'0');ideas.replaceChildren();terms.replaceChildren();let count=0; const matches=x=>!q||x.join(' ').toLowerCase().includes(q);m.ideas.filter(matches).forEach((x,i)=>{count++;const d=el('details');const s=el('summary');s.append(el('span','idea-no',String(i+1).padStart(2,'0')));const t=el('span','idea-title',x[0]);t.append(el('small','',x[1]));s.append(t,el('span','plus','+'));const body=el('div','idea-body');const english=el('div','english-line');english.append(el('p','en',x[3]),audioButton(x[3]));body.append(el('p','',x[2]),english);d.append(s,body);ideas.append(d)});m.terms.filter(matches).forEach(x=>{count++;const t=el('div','term');const label=el('div','term-label');label.append(el('b','',x[0]),audioButton(x[0]));t.append(label,el('span','',x[1]));terms.append(t)});document.querySelector('#empty').hidden=count!==0;const source=document.querySelector('#source');source.replaceChildren(document.createTextNode('内容参考：'));const a=el('a','',m.sourceName);a.href=m.source;a.target='_blank';a.rel='noopener';source.append(a);if(m.extra){const a2=el('a','','视觉课程');a2.href=m.extra;a2.target='_blank';a2.rel='noopener';source.append(document.createTextNode(' · '),a2)}}
 search.addEventListener('input',()=>{const q=search.value.trim().toLowerCase();if(q){const match=modules.findIndex(m=>[m.title,m.en,m.desc,...m.ideas.flat(),...m.terms.flat()].some(s=>s.toLowerCase().includes(q)));if(match>=0)current=match}render()});render();
 
