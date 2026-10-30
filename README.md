@@ -17,3 +17,7 @@ XDG_DATA_HOME="$PWD/.local-data" XDG_CACHE_HOME="$PWD/.local-data/cache" ARGOS_C
 ```
 
 脚本逐页保存译文，已完成的段落会跳过。模型和虚拟环境不提交到仓库。
+
+## 共享词汇
+
+网页的「为所有人添加词汇」会把词汇写入 `shared-terms.json` 并触发 GitHub Pages 更新。需要使用 GitHub fine-grained personal access token：仅选择本仓库，授予 Repository permissions → Contents → Read and write。令牌只在浏览器本次请求中使用，不会保存在仓库或浏览器存储中。新增词汇暂不带录音。网页上的提交会更新远程 `main`；后续在本地修改前先同步远程更新。
